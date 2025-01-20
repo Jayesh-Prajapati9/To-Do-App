@@ -1,9 +1,10 @@
 const express = require('express')
-const app = express()
 const mongoose = require('mongoose');
 const { UserModel, TodoModel } = require("./db");
+const app = express();
 
 let port = 8080;
+app.use(express.json);
 
 
 app.listen(port, () => {
@@ -53,3 +54,15 @@ app.post('add-todo', (res, req) => {
     const task = req.body.task;
     const status = req.body.status;
 })
+app.get('/singup', (res, req) => {
+});
+
+app.post('\todos',(req,res)=>{
+    const token = req.body.token;
+    const verification= jwt.verify(token,JWT_SECRET);
+    const email = verification.email;
+
+    const UserTodos = UserModel.findOne({
+        email: email,
+    })
+});
