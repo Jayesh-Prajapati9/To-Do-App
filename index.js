@@ -1,24 +1,30 @@
 const express = require('express')
+
+const { userModel, userTodoModel } = require("./db");
 const mongoose = require('mongoose');
-const { UserModel, TodoModel } = require("./db");
+
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = "TODO";
+
+mongoose.connect("mongodb://localhost:27017/Todo");
+
 const app = express();
+app.use(express.json());
 
 let port = 8080;
-app.use(express.json);
 
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`)
 })
 
-app.use(express.json());
 
 app.post('/signup', async (req, res) => {
     email = req.body.email;
     password = req.body.password;
     username = req.body.username;
 
-    await UserModel.insert({
+    await userModel.create({
         email: email,
         password: password,
         username: username
@@ -29,40 +35,61 @@ app.post('/signup', async (req, res) => {
     })
 });
 
-app.post('singin', async (req, res) => {
+app.post('/signin', async (req, res) => {
     const email = req.body.email;
     const password = req.body.password;
-    
-    const respone = await UserModel.findOne({
+
+    const respone = await userModel.findOne({
         email: email,
         password: password
     })
     if (respone) {
-        const token = jwt.sign({id: respone._id.toString()})
+        const token = jwt.sign({
+            id: respone._id.toString()
+        }, JWT_SECRET);
         res.json({
             message: "You Signed In Successfully",
             token: token
-        })  
+        })
     } else {
-        res.json({
+        res.status(403).json({
             message: "You doesn't have an account"
         })
     }
 })
 
-app.post('add-todo', (res, req) => {
+function auth(req, res, next) {
+    const token = req.headers.token;
+    const user = jwt.verify(token, JWT_SECRET);
+
+    if (user) {
+        req.userId = token.id;
+        next();
+    } else {
+        res.json("Please Sign In to Continue");
+    }
+};
+
+app.post('/add_todo', auth, async (res, req) => {
+    const userId = req.userId;
     const task = req.body.task;
     const status = req.body.status;
+        await userTodoModel.create({
+            userId: userId,
+            task: task,
+            status: status
+        })
+        res.json({
+            message: "Todo Added SuccesFully"
+        })
 })
-app.get('/singup', (res, req) => {
-});
 
-app.post('\todos',(req,res)=>{
+app.post('\todos', (req, res) => {
     const token = req.body.token;
-    const verification= jwt.verify(token,JWT_SECRET);
+    const verification = jwt.verify(token, JWT_SECRET);
     const email = verification.email;
 
-    const UserTodos = UserModel.findOne({
+    const userTodos = userModel.findOne({
         email: email,
     })
 });
