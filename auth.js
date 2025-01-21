@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = "TODO";
 
-auth((req, res, next) => {
+const auth = ((req, res, next) => {
     const token = req.headers.token;
     const decodeData = jwt.verify(token, JWT_SECRET);
 
@@ -12,3 +12,8 @@ auth((req, res, next) => {
         res.json("Please Sign In to Continue");
     }
 });
+
+module.exports = {
+    auth,
+    JWT_SECRET
+};

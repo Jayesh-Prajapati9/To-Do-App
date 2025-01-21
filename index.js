@@ -3,8 +3,10 @@ const express = require('express')
 const { userModel, userTodoModel } = require("./db");
 const mongoose = require('mongoose');
 
+const { auth, JWT_SECRET } = require('./auth');
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = "TODO";
+
+const bcrypt = require('bcrypt');
 
 mongoose.connect("mongodb://localhost:27017/Todo");
 
@@ -24,9 +26,11 @@ app.post('/signup', async (req, res) => {
     password = req.body.password;
     username = req.body.username;
 
+    const hashedPassword = await bcrypt.hash(password, 5);
+
     await userModel.create({
         email: email,
-        password: password,
+        password: hashedPassword,
         username: username
     })
 
@@ -39,14 +43,25 @@ app.post('/signin', async (req, res) => {
     const email = req.body.email;
     const password = req.body.password;
 
-    const respone = await userModel.findOne({
+    const response = await userModel.findOne({
         email: email,
-        password: password
     })
-    if (respone) {
+
+    if (!response) {
+        res.status(403).json({
+            message: "We don't have your credentials in our database"
+        })
+        return
+    }
+
+    const passwordMatch = bcrypt.compare(password, response.password);
+
+    if (passwordMatch) {
+
         const token = jwt.sign({
-            id: respone._id.toString()
+            id: response._id.toString()
         }, JWT_SECRET);
+
         res.json({
             message: "You Signed In Successfully",
             token: token
@@ -58,30 +73,18 @@ app.post('/signin', async (req, res) => {
     }
 })
 
-function auth(req, res, next) {
-    const token = req.headers.token;
-    const user = jwt.verify(token, JWT_SECRET);
-
-    if (user) {
-        req.userId = token.id;
-        next();
-    } else {
-        res.json("Please Sign In to Continue");
-    }
-};
-
 app.post('/add_todo', auth, async (res, req) => {
     const userId = req.userId;
     const task = req.body.title;
     const status = req.body.status;
-        await userTodoModel.create({
-            userId: userId,
-            task: task,
-            status: status
-        })
-        res.json({
-            message: "Todo Added SuccesFully"
-        })
+    await userTodoModel.create({
+        userId: userId,
+        task: task,
+        status: status
+    })
+    res.json({
+        message: "Todo Added SuccesFully"
+    })
 })
 
 app.post('/todos', (req, res) => {
