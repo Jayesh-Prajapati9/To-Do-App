@@ -72,7 +72,7 @@ function auth(req, res, next) {
 
 app.post('/add_todo', auth, async (res, req) => {
     const userId = req.userId;
-    const task = req.body.task;
+    const task = req.body.title;
     const status = req.body.status;
         await userTodoModel.create({
             userId: userId,
@@ -84,7 +84,7 @@ app.post('/add_todo', auth, async (res, req) => {
         })
 })
 
-app.post('\todos', (req, res) => {
+app.post('/todos', (req, res) => {
     const token = req.body.token;
     const verification = jwt.verify(token, JWT_SECRET);
     const email = verification.email;
