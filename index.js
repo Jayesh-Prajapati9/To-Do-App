@@ -38,7 +38,7 @@ app.post('/signup', async (req, res) => {
     if (!parsedData.success) {
         res.json({
             message: "Sign Up Failed",
-            error: parsedData.error.issues
+            error: parsedData.error.issues[0].message
         })
         return
     }
@@ -46,15 +46,22 @@ app.post('/signup', async (req, res) => {
     email = req.body.email;
     password = req.body.password;
     username = req.body.username;
+    try {
 
-    const hashedPassword = await bcrypt.hash(password, 5);
+        const hashedPassword = await bcrypt.hash(password, 5);
 
-    await userModel.create({
-        email: email,
-        password: hashedPassword,
-        username: username
-    })
 
+        await userModel.create({
+            email: email,
+            password: hashedPassword,
+            username: username
+        })
+    } catch (err) {
+        res.json({
+            message: err
+        })
+        return
+    }
     res.json({
         message: "You Signed Up Successfully"
     })
@@ -63,34 +70,38 @@ app.post('/signup', async (req, res) => {
 app.post('/signin', async (req, res) => {
     const email = req.body.email;
     const password = req.body.password;
+    try {
+        const response = await userModel.findOne({
+            email: email,
+        })
 
-    const response = await userModel.findOne({
-        email: email,
-    })
+        if (!response) {
+            res.status(403).json({
+                message: "We don't have your credentials in our database"
+            })
+            return
+        }
 
-    if (!response) {
-        res.status(403).json({
-            message: "We don't have your credentials in our database"
+        const passwordMatch = await bcrypt.compare(password, response.password);
+
+        if (passwordMatch) {
+            const token = jwt.sign({
+                id: response._id.toString()
+            }, JWT_SECRET);
+            res.json({
+                message: "You Signed In Successfully",
+                token: token
+            })
+        } else {
+            res.status(403).json({
+                message: "You doesn't have an account"
+            })
+        }
+    } catch (err) {
+        res.json({
+            message: err
         })
         return
-    }
-
-    const passwordMatch = await bcrypt.compare(password, response.password);
-
-    if (passwordMatch) {
-
-        const token = jwt.sign({
-            id: response._id.toString()
-        }, JWT_SECRET);
-
-        res.json({
-            message: "You Signed In Successfully",
-            token: token
-        })
-    } else {
-        res.status(403).json({
-            message: "You doesn't have an account"
-        })
     }
 })
 
@@ -98,11 +109,18 @@ app.post('/add_todo', auth, async (res, req) => {
     const userId = req.userId;
     const task = req.body.title;
     const status = req.body.status;
-    await userTodoModel.create({
-        userId: userId,
-        task: task,
-        status: status
-    })
+    try {
+        await userTodoModel.create({
+            userId: userId,
+            task: task,
+            status: status
+        })
+    } catch (err) {
+        res.json({
+            message: err
+        })
+        return
+    }
     res.json({
         message: "Todo Added SuccesFully"
     })
