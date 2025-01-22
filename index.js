@@ -8,6 +8,9 @@ const jwt = require('jsonwebtoken');
 
 const bcrypt = require('bcrypt');
 
+const { z } = require('zod');
+const { error } = require('console');
+
 mongoose.connect("mongodb://localhost:27017/Todo");
 
 const app = express();
@@ -22,6 +25,24 @@ app.listen(port, () => {
 
 
 app.post('/signup', async (req, res) => {
+
+    const requiredBody = z.object({
+        email: z.string().min(5).email(),
+        password: z.string().min(5).max(15),
+        username: z.string().min(3).max(20)
+    });
+
+    // const parsedData = requiredBody.parse(req.body);
+    const parsedData = requiredBody.safeParse(req.body);
+
+    if (!parsedData.success) {
+        res.json({
+            message: "Sign Up Failed",
+            error: parsedData.error.issues
+        })
+        return
+    }
+
     email = req.body.email;
     password = req.body.password;
     username = req.body.username;
@@ -54,7 +75,7 @@ app.post('/signin', async (req, res) => {
         return
     }
 
-    const passwordMatch = bcrypt.compare(password, response.password);
+    const passwordMatch = await bcrypt.compare(password, response.password);
 
     if (passwordMatch) {
 
